@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky Runner</title>
+  <style>
+    :root {
+      --sky-top: #8ce8ff;
+      --sky-mid: #d5f8ff;
+      --sky-bottom: #fff2b0;
+      --panel: rgba(255, 255, 255, 0.22);
+      --panel-border: rgba(255, 255, 255, 0.5);
+      --text: #3d2a18;
+      --accent: #ff7a59;
+      --accent-2: #ffd166;
+      --fruit-green: #7bdc7d;
+      --fruit-red: #ff5f6d;
+      --fruit-purple: #a56de2;
+      --fruit-orange: #ff9f43;
+      --shadow: rgba(96, 52, 17, 0.2);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, #7fe0ff 0%, #d9fbff 32%, #fff6d0 100%);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+
+    .game-shell {
+      position: relative;
+      width: min(92vw, 900px);
+      height: min(82vh, 600px);
+      border-radius: 20px;
+      overflow: hidden;
+      border: 3px solid rgba(255, 255, 255, 0.7);
+      background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.1));
+      box-shadow: 0 18px 40px var(--shadow), inset 0 0 0 3px rgba(255,255,255,0.25);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, #07131f 0%, #0c1d2c 45%, #10293d 100%);
+    }
+
+    .hud {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 12px;
+      z-index: 2;
+    }
+
+    .hud .group {
+      background: rgba(255, 255, 255, 0.55);
+      border: 2px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 4px 12px rgba(117, 79, 31, 0.12);
+      padding: 9px 14px;
+      border-radius: 999px;
+      backdrop-filter: blur(3px);
+      color: #5a2d1d;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(99, 170, 89, 0.18);
+      backdrop-filter: blur(4px);
+      z-index: 3;
+      transition: opacity 0.2s ease;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .card {
+      width: min(80%, 500px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,248,229,0.9));
+      border: 3px solid rgba(255,255,255,0.8);
+      border-radius: 24px;
+      padding: 28px 24px 26px;
+      text-align: center;
+      box-shadow: 0 18px 35px rgba(116, 73, 24, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before,
+    .card::after {
+      content: "";
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: rgba(255, 181, 87, 0.18);
+      top: -18px;
+    }
+
+    .card::before { left: -16px; }
+    .card::after { right: -14px; }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2.1rem, 4vw, 3.2rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #ff6f4d;
+      text-shadow: 2px 2px 0 rgba(255,255,255,0.9);
+    }
+
+    .subtitle {
+      margin: 0 auto 18px;
+      max-width: 30ch;
+      color: #5d3f2d;
+      line-height: 1.5;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 16px 0 22px;
+      color: #4f3128;
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .key {
+      display: inline-block;
+      min-width: 72px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fffaf0, #ffe9b1);
+      border: 2px solid rgba(168, 115, 39, 0.26);
+      box-shadow: inset 0 -4px 0 rgba(255, 150, 70, 0.15);
+      font-weight: 800;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #ffb347, #ff6f4d);
+      color: #fffaf5;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 14px 28px;
+      cursor: pointer;
+      box-shadow: 0 12px 22px rgba(255, 111, 77, 0.38);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px) scale(1.01);
+      box-shadow: 0 16px 28px rgba(255, 111, 77, 0.42);
+      filter: brightness(1.04);
+    }
+  </style>
+</head>
+<body>
+  <div class="game-shell">
+    <div class="hud">
+      <div class="group">Score: <span id="score">0</span></div>
+      <div class="group">Fruit: <span id="fruitCount">0 / 12</span></div>
+      <div class="group">Lives: <span id="lives">3</span></div>
+      <div class="group">Time: <span id="time">45</span>s</div>
+    </div>
+
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
+
+    <div id="overlay" class="overlay">
+      <div class="card">
+        <h1 id="title">Fruit Catch</h1>
+        <p id="message" class="subtitle">
+          Catch 12 fruits before time runs out. Avoid the bombs and keep the basket moving.
+        </p>
+        <div class="controls">
+          <span class="key">A / D</span>
+          <span class="key">← / →</span>
+        </div>
+        <button id="startButton">Start Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const overlay = document.getElementById('overlay');
+    const titleEl = document.getElementById('title');
+    const messageEl = document.getElementById('message');
+    const startButton = document.getElementById('startButton');
+
+    const scoreEl = document.getElementById('score');
+    const fruitCountEl = document.getElementById('fruitCount');
+    const livesEl = document.getElementById('lives');
+    const timeEl = document.getElementById('time');
+
+    const keys = {};
+    const fallingItems = [];
+    const particles = [];
+    const clouds = [];
+
+    const GAME_LENGTH = 45;
+    const WIN_TARGET = 12;
+
+    let gameRunning = false;
+    let animationId = null;
+    let lastTime = 0;
+    let elapsed = 0;
+    let spawnTimer = 0;
+
+    const basket = {
+      x: canvas.width / 2,
+      y: canvas.height - 42,
+      width: 120,
+      height: 26,
+      speed: 470,
+      lives: 3,
+      invincible: 0
+    };
+
+    let score = 0;
+    let fruitCaught = 0;
+    let timeLeft = GAME_LENGTH;
+
+    function random(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function createClouds() {
+      clouds.length = 0;
+      for (let i = 0; i < 6; i++) {
+        clouds.push({
+          x: random(20, canvas.width - 20),
+          y: random(50, 210),
+          r: random(20, 52),
+          speed: random(8, 18),
+          tint: i % 2 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.12)'
+        });
+      }
+    }
+
+    function resetGame() {
+      basket.x = canvas.width / 2;
+      basket.y = canvas.height - 42;
+      basket.lives = 3;
+      basket.invincible = 0;
+
+      score = 0;
+      fruitCaught = 0;
+      timeLeft = GAME_LENGTH;
+      elapsed = 0;
+      spawnTimer = 0.6;
+
+      fallingItems.length = 0;
+      particles.length = 0;
+      updateHud();
+    }
+
+    function startGame() {
+      resetGame();
+      gameRunning = true;
+      overlay.classList.add('hidden');
+      lastTime = 0;
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function endGame(won) {
+      gameRunning = false;
+      titleEl.textContent = won ? 'You Win!' : 'Game Over';
+      messageEl.textContent = won
+        ? 'Great work! You caught enough fruit to fill the basket.'
+        : 'A few bombs got through. Try another round!';
+      overlay.classList.remove('hidden');
+      startButton.textContent = 'Play Again';
+    }
+
+    function updateHud() {
+      scoreEl.textContent = score;
+      fruitCountEl.textContent = `${fruitCaught} / ${WIN_TARGET}`;
+      livesEl.textContent = basket.lives;
+      timeEl.textContent = Math.ceil(timeLeft);
+    }
+
+    function spawnItem() {
+      const isBomb = Math.random() < 0.22;
+
+      if (isBomb) {
+        fallingItems.push({
+          type: 'bomb',
+          x: random(30, canvas.width - 30),
+          y: -30,
+          radius: 18,
+          speed: random(180, 260),
+          rotation: 0,
+          spin: random(-2.5, 2.5)
+        });
+      } else {
+        const fruitStyles = [
+          { type: 'apple', color: '#ff5c6c', accent: '#a71d35', size: 18 },
+          { type: 'orange', color: '#ff9f43', accent: '#d66a00', size: 20 },
+          { type: 'pear', color: '#9be15d', accent: '#4e8d1d', size: 19 },
+          { type: 'banana', color: '#ffd166', accent: '#d29c00', size: 22 },
+          { type: 'grape', color: '#a25be6', accent: '#5d2383', size: 17 },
+          { type: 'melon', color: '#45d0af', accent: '#1a8d7d', size: 21 }
+        ];
+
+        const fruit = fruitStyles[Math.floor(Math.random() * fruitStyles.length)];
+        fallingItems.push({
+          type: fruit.type,
+          color: fruit.color,
+          accent: fruit.accent,
+          x: random(30, canvas.width - 30),
+          y: -30,
+          radius: fruit.size,
+          speed: random(140, 220),
+          rotation: random(0, Math.PI * 2),
+          spin: random(-2, 2),
+          wobble: random(0, Math.PI * 2)
+        });
+      }
+    }
+
+    function spawnParticles(x, y, color, count = 18) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x,
+          y,
+          vx: random(-180, 180),
+          vy: random(-180, 180),
+          life: random(0.5, 1.1),
+          size: random(2, 6),
+          color
+        });
+      }
+    }
+
+    function handleInput(dt) {
+      let axis = 0;
+      if (keys['ArrowLeft'] || keys['a']) axis -= 1;
+      if (keys['ArrowRight'] || keys['d']) axis += 1;
+
+      basket.x += axis * basket.speed * dt;
+      basket.x = Math.max(basket.width / 2, Math.min(canvas.width - basket.width / 2, basket.x));
+    }
+
+    function updateEntities(dt) {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
+        spawnItem();
+        spawnTimer = Math.max(0.6, 1.2 - elapsed * 0.018);
+      }
+
+      for (let i = fallingItems.length - 1; i >= 0; i--) {
+        const item = fallingItems[i];
+        item.y += item.speed * dt;
+        item.rotation += item.spin * dt;
+        if (item.wobble !== undefined) item.wobble += dt * 6;
+
+        const basketLeft = basket.x - basket.width / 2;
+        const basketRight = basket.x + basket.width / 2;
+        const basketTop = basket.y - basket.height / 2;
+        const basketBottom = basket.y + basket.height / 2;
+
+        const inBasketX = item.x > basketLeft && item.x < basketRight;
+        const inBasketY = item.y + item.radius > basketTop && item.y - item.radius < basketBottom;
+
+        if (inBasketX && inBasketY) {
+          if (item.type === 'bomb') {
+            basket.lives -= 1;
+            basket.invincible = 1.2;
+            spawnParticles(item.x, item.y, '#ff5c6c', 28);
+            if (basket.lives <= 0) {
+              endGame(false);
+              return;
+            }
+          } else {
+            fruitCaught += 1;
+            score += 10;
+            spawnParticles(item.x, item.y, '#8be9a8', 18);
+            if (fruitCaught >= WIN_TARGET) {
+              score += 50;
+              endGame(true);
+              return;
+            }
+          }
+          fallingItems.splice(i, 1);
+          continue;
+        }
+
+        if (item.y - item.radius > canvas.height + 20) {
+          if (item.type !== 'bomb') {
+            score = Math.max(0, score - 5);
+          }
+          fallingItems.splice(i, 1);
+        }
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      if (basket.invincible > 0) basket.invincible -= dt;
+    }
+
+    function updateClouds(dt) {
+      for (const cloud of clouds) {
+        cloud.x += cloud.speed * dt;
+        if (cloud.x > canvas.width + cloud.r) {
+          cloud.x = -cloud.r;
+          cloud.y = random(30, 220);
+        }
+      }
+    }
+
+    function gameLoop(timestamp) {
+      if (!gameRunning) return;
+
+      if (!lastTime) lastTime = timestamp;
+      const dt = Math.min((timestamp - lastTime) / 1000, 0.033);
+      lastTime = timestamp;
+
+      elapsed += dt;
+      timeLeft = Math.max(0, GAME_LENGTH - elapsed);
+
+      handleInput(dt);
+      updateClouds(dt);
+      updateEntities(dt);
+      updateHud();
+
+      draw();
+
+      if (timeLeft <= 0 && fruitCaught < WIN_TARGET) {
+        endGame(false);
+        return;
+      }
+
+      animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function drawBackground() {
+      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      sky.addColorStop(0, '#7bdff2');
+      sky.addColorStop(0.55, '#c0f5ff');
+      sky.addColorStop(1, '#f9e7a1');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const sun = ctx.createRadialGradient(canvas.width - 120, 90, 10, canvas.width - 120, 90, 80);
+      sun.addColorStop(0, 'rgba(255, 245, 170, 1)');
+      sun.addColorStop(1, 'rgba(255, 245, 170, 0)');
+      ctx.fillStyle = sun;
+      ctx.fillRect(canvas.width - 220, 0, 220, 200);
+
+      for (const cloud of clouds) {
+        ctx.fillStyle = cloud.tint;
+        ctx.beginPath();
+        ctx.arc(cloud.x, cloud.y, cloud.r, 0, Math.PI * 2);
+        ctx.arc(cloud.x + cloud.r * 0.9, cloud.y + 8, cloud.r * 0.8, 0, Math.PI * 2);
+        ctx.arc(cloud.x - cloud.r * 0.9, cloud.y + 8, cloud.r * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#cfeea5';
+      ctx.fillRect(0, canvas.height - 46, canvas.width, 46);
+      ctx.fillStyle = '#9ed36d';
+      ctx.fillRect(0, canvas.height - 32, canvas.width, 32);
+    }
+
+    function drawBasket() {
+      ctx.save();
+      ctx.translate(basket.x, basket.y);
+
+      if (basket.invincible > 0 && Math.floor(basket.invincible * 12) % 2 === 0) {
+        ctx.globalAlpha = 0.45;
+      }
+
+      ctx.strokeStyle = '#7a4a14';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(-basket.width / 2, 8);
+      ctx.lineTo(-basket.width / 2 + 12, -12);
+      ctx.lineTo(basket.width / 2 - 12, -12);
+      ctx.lineTo(basket.width / 2, 8);
+      ctx.stroke();
+
+      ctx.fillStyle = '#f4b35f';
+      ctx.beginPath();
+      ctx.moveTo(-basket.width / 2 + 2, 10);
+      ctx.lineTo(-basket.width / 2 + 18, -8);
+      ctx.lineTo(basket.width / 2 - 18, -8);
+      ctx.lineTo(basket.width / 2 - 2, 10);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ffc857';
+      ctx.fillRect(-basket.width / 2 + 12, -8, basket.width - 24, 10);
+      ctx.restore();
+    }
+
+    function drawFruit(item) {
+      ctx.save();
+      ctx.translate(item.x, item.y);
+      ctx.rotate(item.rotation);
+
+      if (item.type === 'banana') {
+        ctx.fillStyle = item.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = item.accent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-12, -2);
+        ctx.quadraticCurveTo(0, -14, 12, -2);
+        ctx.stroke();
+      } else if (item.type === 'melon') {
+        ctx.fillStyle = item.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 18, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#e3fff5';
+        ctx.beginPath();
+        ctx.moveTo(-10, 0);
+        ctx.lineTo(10, 0);
+        ctx.stroke();
+      } else if (item.type === 'grape') {
+        ctx.fillStyle = item.color;
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI * 2 / 6) * i;
+          const px = Math.cos(angle) * 8;
+          const py = Math.sin(angle) * 8;
+          ctx.beginPath();
+          ctx.arc(px, py, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.fillStyle = item.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#6cbf4b';
+      ctx.fillRect(-2, -item.radius - 8, 4, 10);
+      ctx.beginPath();
+      ctx.moveTo(0, -item.radius - 8);
+      ctx.quadraticCurveTo(8, -item.radius - 16, 4, -item.radius - 18);
+      ctx.fill();
+
+      if (item.type === 'apple' || item.type === 'orange' || item.type === 'melon') {
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath();
+        ctx.arc(-item.radius * 0.25, -item.radius * 0.25, item.radius * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawBomb(item) {
+      ctx.save();
+      ctx.translate(item.x, item.y);
+      ctx.rotate(item.rotation);
+
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#8d8d8d';
+      ctx.fillRect(-2, -item.radius - 10, 4, 10);
+      ctx.fillStyle = '#fca311';
+      ctx.fillRect(-2, -item.radius - 18, 4, 8);
+
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-6, 10);
+      ctx.lineTo(0, 18);
+      ctx.lineTo(6, 10);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      for (const p of particles) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function draw() {
+      drawBackground();
+
+      for (const item of fallingItems) {
+        if (item.type === 'bomb') drawBomb(item);
+        else drawFruit(item);
+      }
+
+      drawBasket();
+      drawParticles();
+    }
+
+    document.addEventListener('keydown', (event) => {
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      keys[key] = true;
+    });
+
+    document.addEventListener('keyup', (event) => {
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      keys[key] = false;
+    });
+
+    startButton.addEventListener('click', startGame);
+    createClouds();
+    draw();
+    updateHud();
+  </script>
+</body>
+</html>
